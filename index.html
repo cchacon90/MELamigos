@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>MEL Strategy Explorer - Amigos de Santa Cruz</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-background: #f9f9f9;
+      --secondary-background: #ffffff;
+      --primary-text: #2c3e50;
+      --secondary-text: #444;
+      --light-text: #777;
+      --border-color: #f1f1f1;
+      --shadow: 0 4px 12px rgba(0,0,0,0.08);
+      --transition: all 0.3s ease-in-out;
+      --padding: 25px;
+      --border-radius: 8px;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: var(--primary-background);
+      color: var(--primary-text);
+      line-height: 1.6;
+      padding: 20px;
+    }
+    
+    h1 {
+      text-align: center;
+      font-size: 32px;
+      margin-bottom: 30px;
+      color: var(--primary-text);
+      font-weight: 600;
+    }
+    
+    .container {
+      display: flex;
+      max-width: 1600px;
+      margin: 0 auto;
+      min-height: 80vh;
+      position: relative;
+    }
+    
+    #chart-container {
+      flex: 3;
+      height: 100%;
+      position: relative;
+    }
+    
+    #chart {
+      width: 100%;
+      max-width: 900px;
+      height: 900px;
+      margin: 0 auto;
+    }
+    
+    #info-panel {
+      flex: 1;
+      min-width: 300px;
+      background-color: var(--secondary-background);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      padding: var(--padding);
+      margin-left: 20px;
+      height: fit-content;
+      position: sticky;
+      top: 20px;
+      transition: var(--transition);
+    }
+    
+    .info-hidden {
+      opacity: 0;
+      transform: translateX(20px);
+      pointer-events: none;
+    }
+    
+    .info-visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    
+    .info-panel-header {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+    
+    #info-panel-color {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin-right: 12px;
+      vertical-align: middle;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    #info-panel h2 {
+      margin: 0;
+      padding-bottom: 15px;
+      border-bottom: 2px solid var(--border-color);
+      color: var(--primary-text);
+      font-size: 24px;
+      font-weight: 600;
+    }
+    
+    #info-panel h3 {
+      margin: 20px 0 10px 0;
+      font-size: 16px;
+      color: var(--primary-text);
+      font-weight: 600;
+    }
+    
+    #info-panel p {
+      margin: 10px 0;
+      line-height: 1.6;
+      color: var(--secondary-text);
+    }
+    
+    .path-indicator {
+      font-size: 14px;
+      color: var(--light-text);
+      margin-bottom: 20px;
+      font-style: italic;
+    }
+    
+    .info-section {
+      margin-bottom: 20px;
+    }
+    
+    .instructions {
+      text-align: center;
+      margin: 20px auto;
+      max-width: 800px;
+      font-size: 16px;
+      color: var(--light-text);
+      line-height: 1.6;
+    }
+    
+    .tooltip {
+      position: absolute;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      border-radius: 4px;
+      pointer-events: none;
+      font-size: 14px;
+      z-index: 1000;
+      font-family: 'Poppins', sans-serif;
+      max-width: 300px;
+    }
+    
+    .slice text {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 500;
+      pointer-events: none;
+    }
+    
+    @media (max-width: 1100px) {
+      .container {
+        flex-direction: column;
+      }
+      
+      #chart {
+        height: 700px;
+      }
+      
+      #info-panel {
+        margin-left: 0;
+        margin-top: 20px;
+        position: static;
+        width: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>MEL Strategy Explorer - Amigos de Santa Cruz</h1>
+  
+  <p class="instructions">
+    Click on any segment of the diagram to explore details about that component of the MEL Strategy. 
+    Hover over elements to see their names and position in the organizational structure.
+  </p>
+  
+  <div class="container">
+    <div id="chart-container">
+      <div id="chart"></div>
+    </div>
+    
+    <div id="info-panel" class="info-hidden">
+      <div class="info-panel-header">
+        <span id="info-panel-color"></span>
+        <h2 id="info-panel-title">Select an element</h2>
+      </div>
+      
+      <div class="path-indicator" id="info-panel-path">Click on a section to view details</div>
+      
+      <div class="info-section">
+        <h3>Objective</h3>
+        <p id="info-panel-objective">The strategic goal for this area of work will appear here.</p>
+      </div>
+      
+      <div class="info-section">
+        <h3>Indicators</h3>
+        <p id="info-panel-indicators">Metrics used to measure success will appear here.</p>
+      </div>
+      
+      <div class="info-section">
+        <h3>Means of Verification</h3>
+        <p id="info-panel-verification">Methods to verify indicator results will appear here.</p>
+      </div>
+    </div>
+  </div>
+  
+  <div id="tooltip" class="tooltip" style="display: none;"></div>
+
+  <script>
+    // Initial data
+    const data = {
+      name: "root",
+      children: [
+        {
+          name: "Education",
+          color: "#4E7AC7", // Consistent blue
+          objective: "Contribute to the improvement of education in Santa Cruz",
+          indicators: "* By 2030, the net rate of educational coverage in Santa Cruz has increased by at least 6%.\n* By 2030, the literacy rate in Santa Cruz has increased by at least 3%.",
+          verification: "* Reports from the Departmental Office of Education of Sololá.\n* Government reports and plans (Encovi, SEGEPLAN, etc.)",
+          children: [
+            {
+              name: "Quality", 
+              objective: "Strengthen the comprehensive academic development of students in Santa Cruz",
+              indicators: "* By 2030, the annual promotion rate in Santa Cruz has increased by 10%.\n* By 2030, the average level of education in Santa Cruz has increased by at least 1 year.",
+              verification: "* Reports from the Departmental Office of Education of Sololá.\n* Evaluations by Amigos",
+              children: [
+                {
+                  name: "School",
+                  objective: "Continuously guarantee conditions appropriate and relevant to the context of Santa Cruz students that ensure a positive learning experience and the development of academic competencies",
+                  indicators: "* Annually, 100% of permits and licenses required to operate an educational institution are obtained.\n* Annually, 100% of the official school calendar (186 days) is fulfilled.\n* Annually, at least 90% of evaluations reflect optimal pedagogical spaces and access to all basic services",
+                  verification: "* Records and operating permits granted by the Ministry of Education.\n* Internal evaluation records of the educational establishment (Sicajan School)."
+                },
+                {
+                  name: "Reinforcement",
+                  objective: "Strengthen academic competencies and cognitive skills that contribute to an enriching and gratifying educational experience for students",
+                  indicators: "* By 2030, at least 60% of students achieve 80% average on standard grades.\n* Annually, 100% of students meet preschool student competency criteria.\n* Necessary permits are in place to work with students within public schools",
+                  verification: "* Student grade and performance records.\n* Letters of understanding and agreements with Mineduc"
+                },
+                {
+                  name: "Teacher Development",
+                  objective: "Strengthen teaching competencies at Sicajan school for the implementation of pedagogical methodologies that promote critical, creative, and analytical thinking, and are aligned with student needs",
+                  indicators: "* By 2030, 80% of Sicajan school teachers will complete at least two pedagogical certification programs.\n* Annually, the teaching staff at Sicajan school obtains an average rating of at least 90% approval in performance evaluations.",
+                  verification: "* Teacher training certificates.\n* Internal performance evaluation records."
+                },
+                {
+                  name: "Institutional Influence",
+                  objective: "Influence the improvement of educational quality in Santa Cruz",
+                  indicators: "* By 2030, active participation has occurred in at least 2 strategic decision-making spaces in favor of municipal educational quality.\n* By 2030, a 15% increase in government resources allocated to educational development programs in Santa Cruz will be achieved.",
+                  verification: "* Minutes, records, and participation records in spaces organized by or with representation from the Ministry of Education and/or the Municipality of Santa Cruz.\n* Reports on budget allocation and execution from the Ministry of Education and the Municipality."
+                }
+              ]
+            },
+            {
+              name: "Coverage", 
+              objective: "Increase access to formal education in Santa Cruz la Laguna",
+              indicators: "* By 2030, the net rate of educational coverage in Santa Cruz has increased by at least 6%.\n* By 2030, the literacy rate in Santa Cruz has increased by at least 3%.",
+              verification: "* Reports from the Departmental Office of Education of Sololá.\n* Government reports and plans (Encovi, SEGEPLAN, etc.)",
+              children: [
+                {
+                  name: "Enrollment",
+                  objective: "Ensure access and retention of primary level students at Sicajan School",
+                  indicators: "Annually, Sicajan school maintains an enrollment rate of at least 90%. Annually, Sicajan school maintains a student retention rate of at least 90%.",
+                  verification: "Enrollment records"
+                },
+                {
+                  name: "Scholarships",
+                  objective: "Award scholarships for basic, diversified, and university level studies to youth from Santa Cruz",
+                  indicators: "At least 85% of scholarship recipients graduate from the school cycle (Basic, Diversified and University) for which they received the scholarship.\n* At least 90% of scholarship students are promoted to the next annual educational level.",
+                  verification: "Grade records and degree completion documentation"
+                },
+                {
+                  name: "DIGEEX",
+                  objective: "Facilitate access to formal education at primary, basic and diversified levels for adults",
+                  indicators: "There is an adult education program approved by the Ministry of Education.\n* At least 70% of adult students continue in the program until completing the school year.\n* At least 60% of adult students successfully complete their educational level within the established timeframe.",
+                  verification: "Agreements or permits with the Ministry of Education.\n* Grade records and grade promotion documentation."
+                }
+              ]
+            },
+            {
+              name: "Educational Community", 
+              objective: "Strengthen social factors that contribute to school retention in the educational community of Santa Cruz",
+              indicators: "By 2030, the school dropout rate in the municipality has decreased by at least 5%.",
+              verification: "Reports from the Departmental Office of Education of Sololá.\n* Evaluations by Amigos.\n* Surveys of educational institutions in Santa Cruz",
+              children: [
+                {
+                  name: "Students",
+                  objective: "Strengthen the physical, emotional, psychological, and social well-being of students",
+                  indicators: "By 2030, representation of Santa Cruz students in at least 5 extracurricular activities at departmental or national level has been guaranteed.\n* By 2030, representation of school students in at least 5 extracurricular activities at the local level has been guaranteed.\n* By 2030, at least 3 annual activities have been carried out to strengthen student well-being.\n* By the end of 2030, at least 20 students have participated annually in student wellness programs or activities.\n* Annually, there is an increase of at least 10% improvement in average scores on the student self-perception of well-being scale",
+                  verification: "Participation certificates.\n* Photographic records.\n* Records of activities supporting mental health.\n* Reports from self-perception of mental health surveys"
+                },
+                {
+                  name: "Family",
+                  objective: "Promote family participation in academic development",
+                  indicators: "By the end of 2030, attendance of parents at educational activities organized by Amigos has increased by 30%.",
+                  verification: "Attendance records for activities aimed at parents"
+                },
+                {
+                  name: "Community",
+                  objective: "Raise awareness about the importance of education in the community",
+                  indicators: "By the end of 2030, the social value of education among the population of Santa Cruz has increased by at least 40%.",
+                  verification: "Reports from surveys on social valuation of education"
+                }
+              ]
+            },
+            {
+              name: "Educational Management", 
+              objective: "Ensure transparent, efficient, and strategic management of the educational program",
+              indicators: "By the end of 2030, an audit reflecting at least 90% compliance with legal and accounting parameters is conducted (Type and period of audits to be defined).\n* By 2030, at least 75% of employees maintain an improvement in their performance evaluation compared to the previous year.\n* By the end of 2030, at least 80% of participants report a medium or high level of satisfaction in terms of program impact and quality.",
+              verification: "Audit Report. Performance evaluations. Impact assessment",
+              children: [
+                {
+                  name: "Monitoring",
+                  objective: "Implement institutional monitoring and evaluation systems",
+                  indicators: "MEDIDA system updated and actively used for program monitoring",
+                  verification: "MEDIDA system reports and documentation"
+                },
+                {
+                  name: "Administration",
+                  objective: "Optimize administrative processes and internal control",
+                  indicators: "Effective accounting practices implemented and maintained",
+                  verification: "Financial records and accounting reports"
+                },
+                {
+                  name: "Development Planning",
+                  objective: "Create sustainable growth plans for educational initiatives",
+                  indicators: "Strategic plan implementation rates, milestone achievement",
+                  verification: "Strategic planning documents, milestone tracking systems, progress reports"
+                },
+                {
+                  name: "Infrastructure",
+                  objective: "Ensure maintenance and optimization of facilities",
+                  indicators: "Facility maintenance schedules implemented and followed",
+                  verification: "Maintenance logs and facility condition reports"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          name: "Economy",
+          color: "#E6A039", // Consistent orange
+          objective: "Contribute to strengthening the economy in Santa Cruz.",
+          indicators: "By 2030, reduce multidimensional poverty in Santa Cruz by at least 3%.\n* By 2030, increase average per capita income by at least 5%.",
+          verification: "Government reports and plans (Encovi, SEGEPLAN, etc.), Municipal socioeconomic studies",
+          children: [
+            {
+              name: "Vocational",
+              objective: "Develop technical and vocational training programs aligned with local labor market demands.",
+              indicators: "By 2030, at least 70% of graduates are employed in occupations related to their technical training, 12 months after completion.\n* By 2030, at least 25% of graduate students receive certification of labor competencies endorsed by the Ministry of Labor, Ministry of Education, INTECAP or international certifiers.",
+              verification: "Graduate follow-up surveys, Records of certifications obtained",
+              children: [
+                {
+                  name: "Training",
+                  objective: "Strengthen technical and vocational skills of participants in areas of high labor demand.",
+                  indicators: "Annually, at least 85% of participants successfully complete technical training programs.\n* By 2030, the dropout rate for training programs is less than 15%.",
+                  verification: "Participant evaluation records, Attendance and graduation records"
+                },
+                {
+                  name: "Innovation",
+                  objective: "Generate updated information on labor demand and training interests.",
+                  indicators: "By 2025, an updated local labor market study is available and is updated semi-annually until 2030.\n* By 2030, 80% of the training offer is aligned with the identified labor market needs.",
+                  verification: "Market study reports, Updated training catalog document"
+                },
+                {
+                  name: "Practices",
+                  objective: "Establish strategic alliances with local companies facilitating professional practices.",
+                  indicators: "By 2030, formal agreements have been established with at least 10 local companies that offer professional practices.",
+                  verification: "Agreements signed with companies"
+                },
+                {
+                  name: "Instructors",
+                  objective: "Improve the pedagogical capabilities of the instructor team for technical-vocational education.",
+                  indicators: "By 2030, 100% of instructors have completed at least 1 certification program in specialized technical teaching methodologies.",
+                  verification: "Certification records, Teaching evaluation reports"
+                },
+                {
+                  name: "Scholarships",
+                  objective: "Guarantee access to technical training.",
+                  indicators: "By 2030, at least 80% of scholarship recipients successfully complete their training.\n* By 2030, at least 80% of scholarship recipients increase their income by at least 25%.",
+                  verification: "Socioeconomic follow-up records for scholarship recipients"
+                }
+              ]
+            },
+            {
+              name: "Job Placement",
+              objective: "Facilitate the labor insertion of CECAP graduates.",
+              indicators: "By 2030, at least 50% of graduates are formally employed within 12 months after their graduation.\n* By 2030, at least 25% of graduates are affiliated with the Guatemalan Social Security Institute.",
+              verification: "Graduate follow-up records, IGSS affiliation records",
+              children: [
+                {
+                  name: "Connection",
+                  objective: "Establish labor linkage mechanisms favoring the connection between participants and employers.",
+                  indicators: "By 2030, there is a functional job board platform with at least 20 active companies.\n* By 2030, at least 40% of graduates have been hired through labor linkage mechanisms.",
+                  verification: "Job board platform registration, Hiring records"
+                },
+                {
+                  name: "Advisory",
+                  objective: "Strengthen participants' capacities for effective job search and job permanence.",
+                  indicators: "By 2030, at least 75% of employers report a high level of satisfaction with the performance of hired graduates.\n* By 2030, at least 70% of employed participants maintain their job position for a minimum of 12 months.",
+                  verification: "Employer surveys, Follow-up surveys of employed graduates"
+                }
+              ]
+            },
+            {
+              name: "Entrepreneurship",
+              objective: "Promote social entrepreneurship and local economic development.",
+              indicators: "By 2030, at least 70% of supported ventures remain active and profitable after 24 months of starting.\n* By 2030, supported ventures report an average increase of 30% in their income compared to the first year of operation.",
+              verification: "Venture follow-up record, Financial records of ventures",
+              children: [
+                {
+                  name: "Support",
+                  objective: "Implement a comprehensive support program for strengthening local ventures.",
+                  indicators: "By 2030, at least 50% of supported ventures manage to formalize their legal status.\n* By 2030, at least 50 entrepreneurs have completed training programs in business management and apply what they have learned.",
+                  verification: "Legal documentation of ventures, Knowledge application evaluations"
+                },
+                {
+                  name: "Financing",
+                  objective: "Facilitate collaborative networks and business financial development opportunities.",
+                  indicators: "By 2030, at least 10 entrepreneurs access formal credits, microfinance or seed capital equivalent to 200% of their initial capital.\n* By 2030, a collaborative network of entrepreneurs has been established with at least 20 active members.",
+                  verification: "Records of access to financing, Minutes of network meetings and activities"
+                },
+                {
+                  name: "Visibility",
+                  objective: "Improve the visibility and market access of local ventures.",
+                  indicators: "By 2030, participating ventures increase their sales volume by at least 35% compared to their first year of operation.\n* By 2030, at least 30 ventures regularly access new markets or marketing channels.",
+                  verification: "Accounting records of ventures, Market access reports"
+                }
+              ]
+            },
+            {
+              name: "Competitiveness",
+              objective: "Influence the improvement of municipal competitiveness and sustainable development.",
+              indicators: "By 2030, Santa Cruz improves by at least 8 positions its classification in municipal competitiveness rankings at the national level.\n* By 2030, public and private investment in local economic development increases by at least 25%.",
+              verification: "National municipal competitiveness rankings, Municipal and departmental investment reports",
+              children: [
+                {
+                  name: "Environmental Sustainability",
+                  objective: "Integrate sustainable practices in economic development initiatives.",
+                  indicators: "By 2030, at least 40% of ventures at the municipal level implement environmentally sustainable practices.",
+                  verification: "Environmental assessments of ventures"
+                },
+                {
+                  name: "Advocacy",
+                  objective: "Promote the improvement of the municipality's economic conditions.",
+                  indicators: "By 2030, at least 3 proposed municipal policies have been implemented to improve the local economic environment.",
+                  verification: "Municipal agreements and implementation reports"
+                }
+              ]
+            },
+            {
+              name: "Economic Management",
+              objective: "Strengthen institutional management and operational capacities of CECAP.",
+              indicators: "Improvement in organizational efficiency metrics, resource optimization, program effectiveness",
+              verification: "Internal audit reports, program evaluation metrics, operational assessment documentation",
+              children: [
+                {
+                  name: "Monitoring",
+                  objective: "Implement data-driven decision making processes.",
+                  indicators: "Reporting compliance, data quality metrics, evaluation completion rates",
+                  verification: "Monitoring protocols, data quality assessments, evaluation records"
+                },
+                {
+                  name: "Administration",
+                  objective: "Maintain efficient operations of all economic initiatives.",
+                  indicators: "Administrative cost ratios, staff satisfaction, process timeliness",
+                  verification: "Administrative expense reports, staff surveys, process timing assessments"
+                },
+                {
+                  name: "Development Planning",
+                  objective: "Create sustainable growth plans for economic initiatives.",
+                  indicators: "Strategic plan implementation rates, milestone achievement",
+                  verification: "Strategic planning documents, milestone tracking, implementation reports"
+                },
+                {
+                  name: "Infrastructure",
+                  objective: "Provide adequate facilities and resources for economic activities.",
+                  indicators: "Facility condition assessments, resource availability metrics",
+                  verification: "Facility audits, resource inventories, utilization reports"
+                }
+              ]
+            },
+            {
+              name: "Business",
+              objective: "Consolidate two social businesses with economic viability that promote the integral development of artisans and chefs of Santa Cruz La Laguna.",
+              indicators: "* By 2030, both social businesses reach their financial break-even point and maintain profitability.\n* By 2030, social businesses generate at least 15 stable direct jobs.\n* By 2030, 100% of workers are affiliated with IGSS.\n* By 2030, both businesses have legal status.",
+              verification: "Audited financial statements, Payrolls and IGSS affiliation records",
+              children: [
+                {
+                  name: "Product & Service Quality",
+                  objective: "Ensure continuous improvement of product and service quality.",
+                  indicators: "By 2030, a customer satisfaction index of at least 80% is achieved.\n* By 2030, at least 2 recognized quality certifications are obtained.",
+                  verification: "Customer satisfaction surveys, Quality certificates obtained"
+                },
+                {
+                  name: "Business Development",
+                  objective: "Strengthen business strategy and sustainability.",
+                  indicators: "By 2030, social business income increases by at least 28% in relation to 2025 income.",
+                  verification: "Annual financial reports, Socioeconomic impact studies"
+                },
+                {
+                  name: "Operations",
+                  objective: "Optimize operational efficiency.",
+                  indicators: "By 2030, operating costs are reduced by at least 20% through efficiency improvements in relation to 2025 operating costs.",
+                  verification: "Comparative analysis of operating costs"
+                },
+                {
+                  name: "Strengthening",
+                  objective: "Develop a competent and committed team.",
+                  indicators: "By 2030, 100% of staff have received specialized training.\n* By 2030, annual staff turnover remains below 10%.\n* By 2030, at least 80% of employees report significant improvements in their quality of life.",
+                  verification: "Training and human resources records"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          name: "Management",
+          color: "#4CAF50", // Consistent green
+          objective: "Ensure sustainable organizational operations through effective, transparent, and strategic management.",
+          indicators: "Organizational effectiveness metrics, financial sustainability, stakeholder satisfaction",
+          verification: "Organizational assessments, financial sustainability reports, stakeholder feedback mechanisms",
+          children: [
+            {
+              name: "Fundraising", 
+              objective: "Ensure financial sustainability through diversified revenue streams and strategic donor relationships.",
+              indicators: "Funds raised, donor retention rates, funding diversity metrics",
+              verification: "Financial reports, donor database analysis, funding source diversification tracking",
+              children: [
+                {
+                  name: "Revenue",
+                  objective: "Develop diverse and sustainable revenue streams with 5-10% annual growth.",
+                  indicators: "Revenue by source, year-over-year growth, revenue forecasting accuracy",
+                  verification: "Financial statements, growth rate calculations, forecast vs. actual comparisons"
+                },
+                {
+                  name: "Grants",
+                  objective: "Secure and maintain strategic grant funding aligned with organizational priorities.",
+                  indicators: "Grant application success rate, grant renewal rate, reporting compliance",
+                  verification: "Grant application records, renewal tracking, compliance documentation"
+                },
+                {
+                  name: "Donors",
+                  objective: "Build and maintain strong donor relationships with at least 85% retention rate.",
+                  indicators: "Donor acquisition and retention rates, average gift size, donor satisfaction",
+                  verification: "Donor database metrics, gift analysis reports, donor satisfaction surveys"
+                },
+                {
+                  name: "Campaigns",
+                  objective: "Execute successful fundraising campaigns that achieve 90% of target goals.",
+                  indicators: "Campaign goal achievement, cost per dollar raised, donor participation rates",
+                  verification: "Campaign results reporting, cost analysis, participation tracking"
+                },
+                {
+                  name: "Visits",
+                  objective: "Coordinate 24 annual donor visits with 50% conversion to financial support.",
+                  indicators: "Number of site visits conducted, post-visit engagement metrics, visit conversion rates",
+                  verification: "Visit logs, post-visit engagement tracking, conversion documentation"
+                }
+              ]
+            },
+            {
+              name: "Communications", 
+              objective: "Strengthen organizational identity and effectively communicate program impact to stakeholders.",
+              indicators: "Message reach and engagement, brand recognition, stakeholder feedback",
+              verification: "Communications analytics, brand recognition surveys, stakeholder feedback mechanisms",
+              children: [
+                {
+                  name: "Social Media",
+                  objective: "Increase digital reach by 30% annually through strategic content management.",
+                  indicators: "Follower growth, engagement rates, conversion from social platforms",
+                  verification: "Social media analytics, engagement metrics, conversion tracking systems"
+                },
+                {
+                  name: "Institutional Communication",
+                  objective: "Ensure consistent messaging and program awareness across all stakeholders.",
+                  indicators: "Message consistency, stakeholder understanding of mission, communication efficacy",
+                  verification: "Communications audits, stakeholder surveys, effectiveness assessments"
+                },
+                {
+                  name: "Branding",
+                  objective: "Increase brand recognition by 15% annually through consistent visual identity.",
+                  indicators: "Brand recognition metrics, perception alignment with mission",
+                  verification: "Brand recognition studies, perception surveys, identity consistency checks"
+                }
+              ]
+            },
+            {
+              name: "MEL", 
+              objective: "Implement robust monitoring and evaluation systems for data-driven decision making.",
+              indicators: "Evaluation completion rates, data quality metrics, learning implementation",
+              verification: "Evaluation records, data quality assessments, learning implementation documentation",
+              children: [
+                {
+                  name: "Monitoring",
+                  objective: "Maintain systematic tracking of 100% of key indicators with monthly updates.",
+                  indicators: "Indicator tracking completion rates, reporting timeliness, data quality metrics",
+                  verification: "Monitoring system reviews, timeliness tracking, data quality assurance protocols"
+                },
+                {
+                  name: "Innovation",
+                  objective: "Implement at least one pilot project annually to test program improvements.",
+                  indicators: "Number of innovations tested, adoption rates of successful innovations",
+                  verification: "Innovation tracking systems, adoption rate measurements, improvement documentation"
+                },
+                {
+                  name: "Evaluation",
+                  objective: "Produce four evaluation reports annually with 90% recommendation implementation.",
+                  indicators: "Evaluation quality ratings, findings implementation rates",
+                  verification: "Evaluation quality assessments, findings tracking, implementation documentation"
+                }
+              ]
+            },
+            {
+              name: "Finance", 
+              objective: "Ensure transparent financial management with 100% regulatory compliance.",
+              indicators: "Audit results, budget variance, financial reporting accuracy",
+              verification: "Audit documentation, variance analysis reports, accuracy verification processes",
+              children: [
+                {
+                  name: "Accounting",
+                  objective: "Deliver timely, accurate financial statements with clean audit results.",
+                  indicators: "Audit results, reporting timeliness, accounting accuracy metrics",
+                  verification: "Audit reports, timeliness tracking, accuracy verification systems"
+                },
+                {
+                  name: "Legal",
+                  objective: "Maintain 100% compliance with NGO regulatory requirements and permits.",
+                  indicators: "Compliance audit results, regulatory reporting timeliness",
+                  verification: "Compliance certification, regulatory reporting records, legal review documentation"
+                },
+                {
+                  name: "Processes",
+                  objective: "Optimize 90% of financial processes with documented procedures.",
+                  indicators: "Process efficiency metrics, transaction processing times",
+                  verification: "Process evaluations, timing measurements, efficiency assessments"
+                }
+              ]
+            },
+            {
+              name: "Maintenance", 
+              objective: "Maintain high-quality facilities that support program effectiveness.",
+              indicators: "Facility condition assessments, maintenance cost metrics, equipment functionality",
+              verification: "Condition assessment reports, maintenance cost tracking, functionality testing",
+              children: [
+                {
+                  name: "CECAP",
+                  objective: "Ensure 95% of training facilities are in optimal condition for vocational programs.",
+                  indicators: "Facility condition ratings, maintenance response times, user satisfaction",
+                  verification: "Facility inspection reports, response time tracking, user satisfaction surveys"
+                },
+                {
+                  name: "School",
+                  objective: "Maintain educational facilities that meet 100% of quality standards.",
+                  indicators: "School facility ratings, maintenance completion rates, safety metrics",
+                  verification: "Facility inspection documents, work order completion tracking, safety audit reports"
+                }
+              ]
+            },
+            {
+              name: "Human Talent", 
+              objective: "Develop a skilled workforce with 85% retention and high engagement levels.",
+              indicators: "Staff retention, performance metrics, engagement survey results",
+              verification: "HR records, performance evaluation documentation, engagement survey analysis",
+              children: [
+                {
+                  name: "Volunteers",
+                  objective: "Incorporate and effectively manage three volunteers/interns annually.",
+                  indicators: "Volunteer hours, retention rates, satisfaction ratings, performance metrics",
+                  verification: "Volunteer hour tracking, retention calculations, satisfaction surveys"
+                },
+                {
+                  name: "Climate",
+                  objective: "Achieve staff satisfaction scores of at least 85% through positive workplace culture.",
+                  indicators: "Staff satisfaction scores, climate survey results, teamwork metrics",
+                  verification: "Satisfaction survey results, climate assessment reports, teamwork evaluations"
+                },
+                {
+                  name: "Employment Cycle",
+                  objective: "Implement standardized recruitment and onboarding processes for all staff.",
+                  indicators: "Recruitment efficiency, onboarding effectiveness, exit interview data",
+                  verification: "Recruitment metrics, onboarding assessments, exit interview analysis"
+                },
+                {
+                  name: "Legal",
+                  objective: "Maintain 100% compliance with labor laws and employment regulations.",
+                  indicators: "Compliance audit results, HR policy implementation rates",
+                  verification: "Compliance documentation, policy implementation tracking, legal review records"
+                },
+                {
+                  name: "Development Planning",
+                  objective: "Provide at least 40 training hours annually per employee with documented skills improvement.",
+                  indicators: "Training completion rates, skill assessment improvements, career advancement",
+                  verification: "Training records, skill assessment comparisons, career progression tracking"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+    
+    // Set dimensions and radius for the larger chart
+    const width = 900;
+    const height = 900;
+    const radius = Math.min(width, height) / 2;
+    
+    // Create SVG
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .append("g")
+      .attr("transform", `translate(${width / 2},${height / 2})`);
+    
+    // Create partition function for layout
+    const partition = d3.partition()
+      .size([2 * Math.PI, radius]);
+    
+    // Function to generate arcs
+    const arc = d3.arc()
+      .startAngle(d => d.x0)
+      .endAngle(d => d.x1)
+      .innerRadius(d => d.y0)
+      .outerRadius(d => d.y1);
+    
+    // Function to generate colors with consistent brightness
+    const getColor = (d) => {
+      if (d.depth === 0) return "white";
+      
+      // If it has a specific color, use it
+      if (d.data.color) return d.data.color;
+      
+      // Look for color in the closest ancestor
+      let ancestor = d.parent;
+      while (ancestor) {
+        if (ancestor.data.color) {
+          // For better visual hierarchy, adjust color based on depth
+          const baseColor = d3.rgb(ancestor.data.color);
+          const depthDiff = d.depth - ancestor.depth;
+          
+          if (depthDiff > 0) {
+            // Make color slightly lighter for deeper levels (consistent brightness steps)
+            return baseColor.brighter(depthDiff * 0.25).toString();
+          }
+          return ancestor.data.color;
+        }
+        ancestor = ancestor.parent;
+      }
+      
+      // Default color
+      return "#cccccc";
+    };
+    
+    // Function to update the chart
+    function updateChart() {
+      // Create hierarchy
+      const root = d3.hierarchy(data)
+        .sum(d => d.children && d.children.length > 0 ? 0 : 1);
+      
+      // Calculate layout
+      partition(root);
+      
+      // Create path elements
+      const path = svg.selectAll("path")
+        .data(root.descendants().slice(1)) // Ignore root
+        .enter()
+        .append("path")
+        .attr("d", arc)
+        .attr("fill", d => getColor(d))
+        .attr("stroke", "white")
+        .attr("stroke-width", 1.5)
+        .attr("class", "slice")
+        .style("cursor", "pointer")
+        .style("transition", "all 0.3s ease")
+        .on("click", function(event, d) {
+          showInfoPanel(d);
+          event.stopPropagation();
+        })
+        .on("mouseover", function(event, d) {
+          // Show tooltip
+          const fullPath = getPathTo(d).slice(1).join(" > ");
+          
+          tooltip
+            .style("display", "block")
+            .html(`<strong>${d.data.name}</strong><br>${fullPath}`);
+          
+          // Position tooltip
+          const [x, y] = d3.pointer(event, document.body);
+          tooltip
+            .style("left", `${x + 15}px`)
+            .style("top", `${y + 15}px`);
+          
+          // Highlight the sector
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr("stroke-width", 3)
+            .attr("stroke", "#333");
+        })
+        .on("mousemove", function(event) {
+          // Move tooltip with cursor
+          const [x, y] = d3.pointer(event, document.body);
+          tooltip
+            .style("left", `${x + 15}px`)
+            .style("top", `${y + 15}px`);
+        })
+        .on("mouseout", function() {
+          // Hide tooltip
+          tooltip.style("display", "none");
+          
+          // Restore normal style
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr("stroke-width", 1.5)
+            .attr("stroke", "white");
+        });
+      
+      // Add labels
+      const text = svg.selectAll("text.slice-label")
+        .data(root.descendants().slice(1))
+        .enter()
+        .append("text")
+        .attr("class", "slice-label")
+        .attr("transform", function(d) {
+          // Position text in the center of each arc
+          const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
+          const y = (d.y0 + d.y1) / 2;
+          const rotation = x - 90;
+          const translate = y;
+          return `rotate(${rotation}) translate(${translate},0) rotate(${-rotation})`;
+        })
+        .attr("dy", "0.35em")
+        .attr("text-anchor", "middle")
+        .style("font-size", d => {
+          // Dynamically size the text based on the arc width
+          const arcWidth = (d.x1 - d.x0) * radius;
+          // Scale font size based on available space
+          return Math.min(14, Math.max(9, arcWidth / 10)) + "px";
+        })
+        .style("fill", d => {
+          // Use white text for darker colors, black for lighter colors
+          const color = d3.rgb(getColor(d));
+          const luminance = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
+          return luminance > 160 ? "#333" : "#fff";
+        })
+        .style("pointer-events", "none")
+        .style("font-weight", "500")
+        .text(d => {
+          // Determine label based on available space
+          const arcWidth = (d.x1 - d.x0) * radius;
+          
+          // Don't show text if arc is too small
+          if (arcWidth < 20) {
+            return "";
+          }
+          
+          let name = d.data.name;
+          // Shorten text if arc is small but not too small
+          if (arcWidth < 40) {
+            if (name.length > 3) {
+              name = name.substring(0, 3) + ".";
+            }
+          } else if (arcWidth < 80) {
+            if (name.length > 10) {
+              name = name.substring(0, 9) + "...";
+            }
+          }
+          
+          return name;
+        });
+    }
+    
+    function getPathTo(node) {
+      const path = [];
+      let current = node;
+      
+      while (current) {
+        path.unshift(current.data.name);
+        current = current.parent;
+      }
+      
+      return path;
+    }
+    
+    // Info panel functions
+    function showInfoPanel(node) {
+      if (!node || node.depth === 0) {
+        hideInfoPanel();
+        return;
+      }
+      
+      const data = node.data;
+      
+      // Set title and color
+      document.getElementById("info-panel-title").textContent = data.name;
+      const nodeColor = getColor(node);
+      document.getElementById("info-panel-color").style.backgroundColor = nodeColor;
+      
+      // Set path
+      const path = getPathTo(node).slice(1).join(" > ");
+      document.getElementById("info-panel-path").textContent = `Path: ${path}`;
+      
+      // Set content
+      document.getElementById("info-panel-objective").textContent = data.objective || "No objective defined for this element.";
+      document.getElementById("info-panel-indicators").innerHTML = formatBulletPoints(data.indicators || "No indicators specified for this element.");
+      document.getElementById("info-panel-verification").innerHTML = formatBulletPoints(data.verification || "No means of verification specified for this element.");
+      
+      // Show panel
+      document.getElementById("info-panel").classList.remove("info-hidden");
+      document.getElementById("info-panel").classList.add("info-visible");
+      
+      // Highlight selected sector
+      d3.selectAll("path")
+        .style("opacity", 0.7)
+        .style("stroke-width", 1.5);
+      
+      d3.selectAll("path")
+        .filter(d => d === node)
+        .style("opacity", 1)
+        .style("stroke-width", 3)
+        .style("stroke", "#333");
+    }
+    
+    // Format bullet points from text
+    function formatBulletPoints(text) {
+      if (!text) return "";
+      
+      // Replace asterisks with proper bullet points
+      return text.replace(/\s*\*\s*/g, '<br>• ').replace(/^\s*• /, '');
+    }
+    
+    function hideInfoPanel() {
+      document.getElementById("info-panel").classList.add("info-hidden");
+      document.getElementById("info-panel").classList.remove("info-visible");
+      
+      // Reset all sectors
+      d3.selectAll("path")
+        .style("opacity", 1)
+        .style("stroke-width", 1.5)
+        .style("stroke", "white");
+    }
+    
+    // Initialize chart
+    updateChart();
+    
+    // Make chart container clickable to reset
+    document.getElementById("chart").addEventListener("click", function(event) {
+      // Only reset if clicking directly on the SVG or chart container, not a path
+      if (event.target.tagName === "svg" || event.target.id === "chart") {
+        hideInfoPanel();
+      }
+    });
+    
+    // Add click listener to SVG element itself
+    document.querySelector("#chart svg").addEventListener("click", function(event) {
+      // Only reset if clicking directly on the SVG background, not a path
+      if (event.target.tagName === "svg") {
+        hideInfoPanel();
+      }
+    });
+    
+    // Make sure the chart is responsive
+    window.addEventListener("resize", function() {
+      // This could be enhanced to rebuild the chart with new dimensions
+    });
+  </script>
+</body>
+</html>
