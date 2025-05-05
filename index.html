@@ -279,13 +279,13 @@
                 },
                 {
                   name: "Scholarships",
-                  objective: "Award scholarships for basic, diversified, and university level studies to youth from Santa Cruz",
-                  indicators: "At least 85% of scholarship recipients graduate from the school cycle (Basic, Diversified and University) for which they received the scholarship.\n* At least 90% of scholarship students are promoted to the next annual educational level.",
+                  objective: "Award scholarships for middle school, high school, and university level studies to youth from Santa Cruz",
+                  indicators: "At least 85% of scholarship recipients graduate from the school cycle (middle school, high school, and university) for which they received the scholarship.\n* At least 90% of scholarship students are promoted to the next annual educational level.",
                   verification: "Grade records and degree completion documentation"
                 },
                 {
                   name: "DIGEEX",
-                  objective: "Facilitate access to formal education at primary, basic and diversified levels for adults",
+                  objective: "Facilitate access to formal education at elementary, middle and high school levels for adults",
                   indicators: "There is an adult education program approved by the Ministry of Education.\n* At least 70% of adult students continue in the program until completing the school year.\n* At least 60% of adult students successfully complete their educational level within the established timeframe.",
                   verification: "Agreements or permits with the Ministry of Education.\n* Grade records and grade promotion documentation."
                 }
@@ -884,6 +884,23 @@
           
           return name;
         });
+
+       // Añadir logo en el centro
+  const logoSize = radius * 0.50; // Ajusta este valor para cambiar el tamaño del logo
+  svg.append("image")
+    .attr("xlink:href", "logo.png")
+    .attr("class", "center-logo")
+    .attr("x", -logoSize / 2)
+    .attr("y", -logoSize / 2)
+    .attr("width", logoSize)
+    .attr("height", logoSize)
+    .style("border-radius", "50%")
+    .on("click", function() {
+      hideInfoPanel();
+    });
+
+
+     
     }
     
     function getPathTo(node) {
